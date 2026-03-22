@@ -29,9 +29,20 @@ JWTManager(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(courses_bp)
 
-# Auto-create tables (needed for Postgres on first deploy)
+# Auto-create tables + seed if empty (works on Vercel Postgres)
 with app.app_context():
     db.create_all()
+    from models import Course, Lesson
+    if Course.query.count() == 0:
+        from routes.courses import seed_db
+        from flask import request as flask_request
+        import json
+        with app.test_request_context(
+            '/api/seed', method='POST',
+            data=json.dumps({'secret': os.environ.get('ADMIN_SECRET', 'admin123')}),
+            content_type='application/json'
+        ):
+            seed_db()
 
 # Serve frontend pages
 @app.route('/')

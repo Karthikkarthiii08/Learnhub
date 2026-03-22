@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - LearnHub</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo"><span class="icon">🎓</span> LearnHub</a>
+  <div class="nav-right">
+    <span class="badge badge-admin">⚙️ Admin</span>
+    <div class="nav-user">
+      <div class="nav-avatar" id="navAvatar">A</div>
+      <span style="font-size:0.88rem;color:var(--text2);font-weight:500" id="navName"></span>
+    </div>
+    <button onclick="logout()" class="btn btn-ghost btn-sm">Logout</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Admin Panel</div>
+    <a href="#" onclick="showSection('overview')" id="tab-overview" class="active">📊 Overview</a>
+    <a href="#" onclick="showSection('courses')" id="tab-courses"> Courses</a>
+    <a href="#" onclick="showSection('lessons')" id="tab-lessons">🎬 Lessons</a>
+    <a href="#" onclick="showSection('students')" id="tab-students">👥 Students</a>
+    <div class="sidebar-label">Site</div>
+    <a href="/" target="_blank">🌐 View Site</a>
+  </div>
+
+  <div class="main-content">
+    <div id="alertBox"></div>
+
+    <!-- OVERVIEW -->
+    <div id="section-overview">
+      <div class="page-header"><h2>Dashboard Overview</h2><p>Platform summary</p></div>
+      <div class="stats-grid" id="overviewStats"></div>
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Recent Courses</h3>
+      <div class="course-grid" id="overviewCourses"></div>
+    </div>
+
+    <!-- COURSES -->
+    <div id="section-courses" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <div class="page-header" style="margin:0"><h2>Manage Courses</h2></div>
+        <button class="btn btn-primary" onclick="openCourseModal()">+ Add Course</button>
+      </div>
+      <div class="course-grid" id="adminCourseGrid"></div>
+    </div>
+
+    <!-- LESSONS -->
+    <div id="section-lessons" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <div class="page-header" style="margin:0"><h2>Manage Lessons</h2></div>
+        <button class="btn btn-primary" onclick="openLessonModal()">+ Add Lesson</button>
+      </div>
+      <div style="max-width:280px;margin-bottom:1rem">
+        <select id="lessonCourseFilter" onchange="loadLessons()" style="width:100%;padding:0.6rem 0.9rem;border:1.5px solid var(--border2);border-radius:var(--radius-sm);font-family:Inter,sans-serif;color:var(--text)">
+          <option value="">All Courses</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Title</th><th>Course</th><th>Video</th><th>Actions</th></tr></thead>
+          <tbody id="lessonTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div id="section-students" style="display:none">
+      <div class="page-header"><h2>Students</h2><p>All registered students</p></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Joined</th></tr></thead>
+          <tbody id="studentTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COURSE MODAL -->
+<div class="modal-overlay" id="courseModal"></div>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="courseModalTitle">Add Course</h3>
+      <button class="modal-close" onclick="closeModal('courseModal')">✕</button>
+    </div>
+    <div id="courseAlertBox"></div>
+    <form id="courseForm">
+      <input type="hidden" id="courseId"/>
+      <div class="form-group"><label>Title</label><input type="text" id="courseTitle" required/></div>
+      <div class="form-group"><label>Description</label><textarea id="courseDesc"></textarea></div>
+      <div class="form-group"><label>Instructor</label><input type="text" id="courseInstructor"/></div>
+      <div class="form-group"><label>Thumbnail URL</label><input type="text" id="courseThumbnail" placeholder="https://..."/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label>Duration (weeks)</label><input type="number" id="courseDuration" value="4" min="1"/></div>
+        <div class="form-group"><label>Rating (0-5)</label><input type="number" id="courseRating" value="4.5" min="0" max="5" step="0.1"/></div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:0.75rem">
+        <input type="checkbox" id="coursePremium" style="width:auto"/>
+        <label for="coursePremium" style="margin:0;cursor:pointer">⭐ Premium Course</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Course</button>
+    </form>
+  </div>
+</div>
+
+<!-- LESSON MODAL -->
+<div class="modal-overlay" id="lessonModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="lessonModalTitle">Add Lesson</h3>
+      <button class="modal-close" onclick="closeModal('lessonModal')">✕</button>
+    </div>
+    <div id="lessonAlertBox"></div>
+    <form id="lessonForm">
+      <input type="hidden" id="lessonId"/>
+      <div class="form-group"><label>Course</label><select id="lessonCourseId" required></select></div>
+      <div class="form-group"><label>Lesson Title</label><input type="text" id="lessonTitle" required/></div>
+      <div class="form-group"><label>YouTube Video URL</label><input type="text" id="lessonVideo" placeholder="https://www.youtube.com/watch?v=..."/></div>
+      <div class="form-group"><label>Order</label><input type="number" id="lessonOrder" value="1" min="1"/></div>
+      <button type="submit" class="btn btn-primary btn-block">Save Lesson</button>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+  if (!isLoggedIn() || !isAdmin()) window.location.href = '/login.html';
+  const user = getUser();
+  document.getElementById('navName').textContent = user.name;
+  document.getElementById('navAvatar').textContent = user.name[0].toUpperCase();
+
+  let allCourses = [];
+
+  function showSection(name) {
+    ['overview','courses','lessons','students'].forEach(s => {
+      document.getElementById('section-' + s).style.display = s === name ? 'block' : 'none';
+      document.getElementById('tab-' + s).classList.toggle('active', s === name);
+    });
+    if (name === 'overview') loadOverview();
+    if (name === 'courses') loadCourses();
+    if (name === 'lessons') { loadCourseOptions(); loadLessons(); }
+    if (name === 'students') loadStudents();
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  async function loadOverview() {
+    const [courses, students] = await Promise.all([apiFetch('/api/courses'), apiFetch('/api/students')]);
+    allCourses = courses;
+    const totalLessons = courses.reduce((s, c) => s + c.lesson_count, 0);
+    document.getElementById('overviewStats').innerHTML = `
+      <div class="stat-card"><div class="stat-icon purple">📚</div><div><div class="stat-num">${courses.length}</div><div class="stat-label">Courses</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue">🎬</div><div><div class="stat-num">${totalLessons}</div><div class="stat-label">Lessons</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">👥</div><div><div class="stat-num">${students.length}</div><div class="stat-label">Students</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">⭐</div><div><div class="stat-num">${courses.filter(c=>c.is_premium).length}</div><div class="stat-label">Premium</div></div></div>
+    `;
+    document.getElementById('overviewCourses').innerHTML = courses.slice(0,4).map(c => `
+      <div class="course-card" onclick="showSection('courses')">
+        <div class="course-thumb">
+          <img src="${c.thumbnail || `https://placehold.co/480x270/4F46E5/ffffff?text=${encodeURIComponent(c.title)}`}" alt="${c.title}"/>
+          <span class="lesson-badge">☰ ${c.lesson_count}</span>
+        </div>
+        <div class="course-body">
+          <h3>${c.title}</h3>
+          <div class="course-instructor">👤 ${c.instructor || 'Admin'}</div>
+          <div class="course-footer">
+            <span class="badge ${c.is_premium ? 'badge-orange' : 'badge-green'}">${c.is_premium ? '⭐ Premium' : 'Free'}</span>
+            <span style="font-size:0.8rem;color:var(--muted)">🕐 ${c.duration_weeks}w</span>
+          </div>
+        </div>
+      </div>`).join('') || '<p style="color:var(--muted)">No courses yet.</p>';
+  }
+
+  async function loadCourses() {
+    allCourses = await apiFetch('/api/courses');
+    const grid = document.getElementById('adminCourseGrid');
+    if (!allCourses.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📚</div><p>No courses yet.</p></div>';
+      return;
+    }
+    grid.innerHTML = allCourses.map(c => `
+      <div class="course-card">
+        <div class="course-thumb">
+          <img src="${c.thumbnail || `https://placehold.co/480x270/4F46E5/ffffff?text=${encodeURIComponent(c.title)}`}" alt="${c.title}"/>
+          <span class="lesson-badge">☰ ${c.lesson_count}</span>
+          ${c.is_premium ? '<span class="lesson-badge" style="left:10px;right:auto;background:#7C3AED">⭐</span>' : ''}
+        </div>
+        <div class="course-body">
+          <h3>${c.title}</h3>
+          <div class="course-instructor">👤 ${c.instructor || 'Admin'}</div>
+          <div class="stars"><span class="star-icons">${starsHtml(c.rating)}</span><span class="rating-num">${c.rating}</span></div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick='openCourseModal(${JSON.stringify(c)})'>✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteCourse(${c.id})">🗑</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  function openCourseModal(c = null) {
+    document.getElementById('courseId').value = c ? c.id : '';
+    document.getElementById('courseTitle').value = c ? c.title : '';
+    document.getElementById('courseDesc').value = c ? c.description || '' : '';
+    document.getElementById('courseInstructor').value = c ? c.instructor || '' : '';
+    document.getElementById('courseThumbnail').value = c ? c.thumbnail || '' : '';
+    document.getElementById('courseDuration').value = c ? c.duration_weeks || 4 : 4;
+    document.getElementById('courseRating').value = c ? c.rating || 4.5 : 4.5;
+    document.getElementById('coursePremium').checked = c ? c.is_premium : false;
+    document.getElementById('courseModalTitle').textContent = c ? 'Edit Course' : 'Add Course';
+    openModal('courseModal');
+  }
+
+  document.getElementById('courseForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('courseId').value;
+    const body = {
+      title: document.getElementById('courseTitle').value,
+      description: document.getElementById('courseDesc').value,
+      instructor: document.getElementById('courseInstructor').value,
+      thumbnail: document.getElementById('courseThumbnail').value,
+      duration_weeks: parseInt(document.getElementById('courseDuration').value),
+      rating: parseFloat(document.getElementById('courseRating').value),
+      is_premium: document.getElementById('coursePremium').checked,
+    };
+    try {
+      if (id) await apiFetch('/api/course/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      else await apiFetch('/api/course', { method: 'POST', body: JSON.stringify(body) });
+      closeModal('courseModal');
+      loadCourses();
+    } catch (err) { showAlert('courseAlertBox', err.error || 'Failed'); }
+  });
+
+  async function deleteCourse(id) {
+    if (!confirm('Delete this course?')) return;
+    await apiFetch('/api/course/' + id, { method: 'DELETE' });
+    loadCourses();
+  }
+
+  async function loadCourseOptions() {
+    allCourses = await apiFetch('/api/courses');
+    const opts = allCourses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+    document.getElementById('lessonCourseFilter').innerHTML = '<option value="">All Courses</option>' + opts;
+    document.getElementById('lessonCourseId').innerHTML = opts;
+  }
+
+  async function loadLessons() {
+    const cid = document.getElementById('lessonCourseFilter').value;
+    let lessons = [];
+    if (cid) {
+      const ls = await apiFetch('/api/course/' + cid + '/lessons');
+      const c = allCourses.find(x => x.id == cid);
+      ls.forEach(l => l._ct = c ? c.title : '');
+      lessons = ls;
+    } else {
+      for (const c of allCourses) {
+        const ls = await apiFetch('/api/course/' + c.id + '/lessons');
+        ls.forEach(l => l._ct = c.title);
+        lessons.push(...ls);
+      }
+    }
+    const tbody = document.getElementById('lessonTable');
+    if (!lessons.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">No lessons found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lessons.map(l => `
+      <tr>
+        <td><span class="badge badge-primary">${l.lesson_order}</span></td>
+        <td style="font-weight:500">${l.title}</td>
+        <td style="color:var(--muted)">${l._ct}</td>
+        <td>${l.video_url ? `<a href="${l.video_url}" target="_blank" class="badge badge-green">▶ Watch</a>` : '<span style="color:var(--muted2)">—</span>'}</td>
+        <td>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn btn-ghost btn-sm" onclick='openLessonModal(${JSON.stringify(l)})'>Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteLesson(${l.id})">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function openLessonModal(l = null) {
+    document.getElementById('lessonId').value = l ? l.id : '';
+    document.getElementById('lessonTitle').value = l ? l.title : '';
+    document.getElementById('lessonVideo').value = l ? l.video_url || '' : '';
+    document.getElementById('lessonOrder').value = l ? l.lesson_order : 1;
+    if (l) document.getElementById('lessonCourseId').value = l.course_id;
+    document.getElementById('lessonModalTitle').textContent = l ? 'Edit Lesson' : 'Add Lesson';
+    openModal('lessonModal');
+  }
+
+  document.getElementById('lessonForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('lessonId').value;
+    const body = {
+      course_id: parseInt(document.getElementById('lessonCourseId').value),
+      title: document.getElementById('lessonTitle').value,
+      video_url: document.getElementById('lessonVideo').value,
+      lesson_order: parseInt(document.getElementById('lessonOrder').value),
+    };
+    try {
+      if (id) await apiFetch('/api/lesson/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      else await apiFetch('/api/lesson', { method: 'POST', body: JSON.stringify(body) });
+      closeModal('lessonModal');
+      loadLessons();
+    } catch (err) { showAlert('lessonAlertBox', err.error || 'Failed'); }
+  });
+
+  async function deleteLesson(id) {
+    if (!confirm('Delete this lesson?')) return;
+    await apiFetch('/api/lesson/' + id, { method: 'DELETE' });
+    loadLessons();
+  }
+
+  async function loadStudents() {
+    const students = await apiFetch('/api/students');
+    const tbody = document.getElementById('studentTable');
+    if (!students.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">No students yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = students.map(s => `
+      <tr>
+        <td style="color:var(--muted)">#${s.id}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.6rem">
+            <div class="nav-avatar" style="width:30px;height:30px;font-size:0.75rem">${s.name[0].toUpperCase()}</div>
+            <span style="font-weight:500">${s.name}</span>
+          </div>
+        </td>
+        <td style="color:var(--muted)">${s.email}</td>
+        <td style="color:var(--muted)">${new Date(s.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td>
+      </tr>`).join('');
+  }
+
+  loadOverview();
+</script>
+</body>
+</html>

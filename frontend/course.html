@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Course - LearnHub</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo"><span class="icon">🎓</span> LearnHub</a>
+  <div class="nav-center">
+    <a href="/courses.html">← Courses</a>
+  </div>
+  <div class="nav-right" id="navRight">
+    <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+    <a href="/login.html" class="btn btn-white btn-sm">Login</a>
+    <a href="/signup.html" class="btn btn-primary btn-sm">Sign Up</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="alertBox"></div>
+  <div id="courseDetail" style="color:var(--muted);text-align:center;padding:4rem">Loading...</div>
+</div>
+
+<footer>
+  <div class="footer-logo">🎓 LearnHub</div>
+  <p>© 2025 LearnHub.</p>
+</footer>
+
+<script src="/static/js/api.js"></script>
+<script>
+  const user = getUser();
+  if (user) {
+    document.getElementById('navRight').innerHTML = `
+      <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+      <div class="nav-user"><div class="nav-avatar">${user.name[0].toUpperCase()}</div></div>
+      <a href="${user.role === 'admin' ? '/admin.html' : '/dashboard.html'}" class="btn btn-primary btn-sm">Dashboard</a>`;
+    updateThemeBtn();
+  }
+
+  const params = new URLSearchParams(location.search);
+  const courseId = params.get('id');
+  const autoEnroll = params.get('autoenroll') === '1';
+
+  // Auto-enroll if redirected back after login/signup
+  if (autoEnroll && isLoggedIn() && !isAdmin()) {
+    apiFetch('/api/enroll', { method: 'POST', body: JSON.stringify({ course_id: parseInt(courseId) }) })
+      .catch(() => {}) // ignore "already enrolled"
+      .finally(() => {
+        // Clean URL and redirect to lesson
+        window.location.href = '/lesson.html?course=' + courseId;
+      });
+  }
+
+  async function load() {
+    const course = await apiFetch('/api/course/' + courseId);
+    let progressHtml = '', actionBtn = '';
+
+    if (isLoggedIn() && !isAdmin()) {
+      try {
+        const prog = await apiFetch('/api/course-progress/' + courseId);
+        progressHtml = `
+          <div style="margin:1rem 0">
+            <div class="progress-label"><span>${prog.percent}% complete</span><span>${prog.completed}/${prog.total} lessons</span></div>
+            <div class="progress-wrap"><div class="progress-bar" style="width:${prog.percent}%"></div></div>
+          </div>`;
+        actionBtn = `<a href="/lesson.html?course=${courseId}" class="btn btn-primary btn-lg">▶ Continue Learning</a>`;
+      } catch {
+        actionBtn = `<button onclick="enroll()" class="btn btn-primary btn-lg">+ Enroll for Free</button>`;
+      }
+    } else if (!isLoggedIn()) {
+      actionBtn = `<a href="/login.html?enroll=${courseId}" class="btn btn-primary btn-lg">Login to Enroll</a>`;
+    }
+
+    document.getElementById('courseDetail').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:2.5rem;align-items:start" class="detail-grid">
+        <div>
+          <a href="/courses.html" style="color:var(--muted);font-size:0.85rem">← Back to courses</a>
+          <div style="margin:1rem 0 0.5rem"><span class="badge badge-primary">${course.is_premium ? '⭐ Premium' : 'Free'}</span></div>
+          <h1 style="font-size:2rem;font-weight:800;margin-bottom:0.6rem;line-height:1.2">${course.title}</h1>
+          <p style="color:var(--muted);line-height:1.7;margin-bottom:1rem">${course.description || ''}</p>
+          <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.88rem;color:var(--muted)">
+            <span>👤 ${course.instructor || 'Admin'}</span>
+            <span>📖 ${course.lessons.length} lessons</span>
+            <span>🕐 ${course.duration_weeks} weeks</span>
+            <span style="color:var(--star)">★ ${(course.rating || 4.5).toFixed(1)}</span>
+          </div>
+          ${progressHtml}
+          ${actionBtn}
+          <div style="margin-top:2rem">
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">Course Curriculum (${course.lessons.length} lessons)</h3>
+            ${course.lessons.map(l => `
+              <div class="lesson-item" style="cursor:default;margin-bottom:0.4rem">
+                <div class="lesson-num">${l.lesson_order}</div>
+                <div class="lesson-info">
+                  <div class="title">${l.title}</div>
+                  <div class="meta">🎬 Video lesson</div>
+                </div>
+              </div>`).join('') || '<p style="color:var(--muted)">No lessons added yet.</p>'}
+          </div>
+        </div>
+        <div style="position:sticky;top:80px">
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
+            <img src="${course.thumbnail || `https://placehold.co/720x405/4F46E5/ffffff?text=${encodeURIComponent(course.title)}`}"
+                 style="width:100%" alt="${course.title}"/>
+            <div style="padding:1.5rem">
+              <div style="font-size:1.5rem;font-weight:800;margin-bottom:0.3rem">${course.is_premium ? '💎 Premium' : '🆓 Free'}</div>
+              <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem">Full lifetime access</p>
+              ${actionBtn}
+              <div style="margin-top:1.2rem;display:flex;flex-direction:column;gap:0.5rem;font-size:0.85rem;color:var(--muted)">
+                <span>📖 ${course.lessons.length} lessons</span>
+                <span>🕐 ${course.duration_weeks} weeks</span>
+                <span>🎬 Video content</span>
+                <span>📱 Access anywhere</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function enroll() {
+    if (!isLoggedIn()) { window.location.href = '/login.html'; return; }
+    try {
+      await apiFetch('/api/enroll', { method: 'POST', body: JSON.stringify({ course_id: parseInt(courseId) }) });
+      showAlert('alertBox', 'Enrolled successfully!', 'success');
+      setTimeout(load, 800);
+    } catch (err) {
+      showAlert('alertBox', err.error || 'Enrollment failed');
+    }
+  }
+
+  load();
+</script>
+<style>
+  @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr !important; } }
+</style>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>About - LearnHub</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo"><span class="icon">🎓</span> LearnHub</a>
+  <div class="nav-center">
+    <a href="/">Home</a>
+    <a href="/about.html" class="active">About</a>
+    <a href="/courses.html">Courses</a>
+    <a href="/courses.html?premium=1">Premium Courses</a>
+  </div>
+  <div class="nav-right" id="navRight">
+    <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+    <a href="/login.html" class="btn btn-white btn-sm">Login</a>
+    <a href="/signup.html" class="btn btn-primary btn-sm">Sign Up</a>
+  </div>
+</nav>
+
+<div class="container" style="max-width:800px">
+  <div style="text-align:center;padding:3rem 0 2rem">
+    <h1 style="font-size:2.5rem;font-weight:800;color:var(--primary);margin-bottom:1rem">About LearnHub</h1>
+    <p style="font-size:1.1rem;color:var(--muted);line-height:1.8">
+      LearnHub is a modern online learning platform built to help students master new skills through structured, video-based courses. Our mission is to make quality education accessible to everyone.
+    </p>
+  </div>
+  <div class="why-grid" style="margin-bottom:3rem">
+    <div class="why-card"><div class="why-icon">🌍</div><h4>Global Community</h4><p>Join learners from around the world on a shared journey of growth.</p></div>
+    <div class="why-card"><div class="why-icon">💡</div><h4>Expert Content</h4><p>Courses crafted by industry professionals with real-world experience.</p></div>
+    <div class="why-card"><div class="why-icon">🎯</div><h4>Goal-Oriented</h4><p>Structured paths that take you from beginner to job-ready.</p></div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">🎓 LearnHub</div>
+  <p>© 2025 LearnHub. Empowering learners worldwide.</p>
+</footer>
+<script src="/static/js/api.js"></script>
+<script>
+  const user = getUser();
+  if (user) {
+    document.getElementById('navRight').innerHTML = `
+      <div class="nav-user"><div class="nav-avatar">${user.name[0].toUpperCase()}</div></div>
+      <a href="${user.role === 'admin' ? '/admin.html' : '/dashboard.html'}" class="btn btn-primary btn-sm">Dashboard</a>`;
+  }
+</script>
+</body>
+</html>

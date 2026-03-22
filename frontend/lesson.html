@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lesson - LearnHub</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="/static/js/theme.js"></script>
+  <style>
+    body { background: #0F172A; color: #F1F5F9; }
+    .lms-wrap { display: flex; height: calc(100vh - 64px); overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .lms-sidebar {
+      width: 320px; min-width: 320px;
+      background: #1E293B;
+      border-right: 1px solid #334155;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .lms-sidebar-head {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+    }
+    .lms-sidebar-head h4 {
+      font-size: 0.9rem; font-weight: 700;
+      color: #F1F5F9; margin-bottom: 0.6rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .prog-row { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94A3B8; margin-bottom: 0.3rem; }
+    .prog-track { background: #334155; border-radius: 99px; height: 6px; overflow: hidden; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg, #6366F1, #06B6D4); border-radius: 99px; transition: width 0.5s; }
+
+    .lms-lesson-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .lms-lesson-list::-webkit-scrollbar { width: 4px; }
+    .lms-lesson-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+
+    .lesson-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 0.85rem; border-radius: 8px;
+      cursor: pointer; transition: all 0.15s;
+      border: 1px solid transparent; margin-bottom: 0.3rem;
+    }
+    .lesson-row:hover:not(.locked) { background: #334155; border-color: #475569; }
+    .lesson-row.active { background: rgba(99,102,241,0.15); border-color: #6366F1; }
+    .lesson-row.locked { opacity: 0.45; cursor: not-allowed; }
+    .lesson-num-badge {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700;
+      background: #6366F1; color: #fff;
+    }
+    .lesson-row.done .lesson-num-badge { background: #10B981; }
+    .lesson-row.locked .lesson-num-badge { background: #475569; }
+    .lesson-row.active .lesson-num-badge { background: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.3); }
+    .lesson-row-info { flex: 1; min-width: 0; }
+    .lesson-row-title { font-size: 0.85rem; font-weight: 500; color: #E2E8F0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lesson-row-meta { font-size: 0.72rem; color: #64748B; margin-top: 0.15rem; }
+    .lesson-row.done .lesson-row-meta { color: #10B981; }
+    .lesson-row.active .lesson-row-title { color: #A5B4FC; }
+
+    /* ── MAIN ── */
+    .lms-main { flex: 1; overflow-y: auto; background: #0F172A; }
+    .lms-main::-webkit-scrollbar { width: 5px; }
+    .lms-main::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+
+    .video-container { background: #000; width: 100%; position: relative; padding-bottom: 56.25%; }
+    .video-container iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .video-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #475569; gap: 1rem;
+    }
+    .video-placeholder .play-icon { font-size: 4rem; opacity: 0.3; }
+
+    .lesson-info-panel { padding: 1.5rem 2rem; }
+    .lesson-badges { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+    .lbadge {
+      padding: 0.2rem 0.65rem; border-radius: 99px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .lbadge-num { background: rgba(99,102,241,0.2); color: #A5B4FC; }
+    .lbadge-done { background: rgba(16,185,129,0.2); color: #6EE7B7; }
+    .lbadge-pct { background: rgba(245,158,11,0.2); color: #FCD34D; }
+    .lbadge-locked { background: rgba(100,116,139,0.2); color: #94A3B8; }
+
+    .lesson-title { font-size: 1.4rem; font-weight: 800; color: #F1F5F9; margin-bottom: 0.5rem; line-height: 1.3; }
+    .lesson-course-name { font-size: 0.85rem; color: #64748B; margin-bottom: 1.2rem; }
+
+    .watch-progress-bar {
+      background: #1E293B; border-radius: 99px; height: 8px;
+      overflow: hidden; margin-bottom: 0.4rem;
+    }
+    .watch-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #6366F1, #06B6D4);
+      border-radius: 99px; transition: width 0.3s;
+    }
+    .watch-progress-label { font-size: 0.78rem; color: #64748B; margin-bottom: 1.2rem; }
+
+    .action-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .btn-complete {
+      background: linear-gradient(135deg, #6366F1, #4F46E5);
+      color: #fff; border: none; padding: 0.65rem 1.5rem;
+      border-radius: 8px; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-complete:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(99,102,241,0.4); }
+    .btn-complete:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-next {
+      background: #1E293B; color: #94A3B8; border: 1px solid #334155;
+      padding: 0.65rem 1.2rem; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-next:hover { border-color: #6366F1; color: #A5B4FC; }
+    .done-msg { color: #10B981; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; }
+
+    .alert-bar {
+      margin: 0 2rem 1rem;
+      padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.88rem; display: none;
+    }
+    .alert-bar.show { display: flex; align-items: center; gap: 0.5rem; }
+    .alert-bar.success { background: rgba(16,185,129,0.15); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .alert-bar.error { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+
+    .empty-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: #475569; text-align: center; padding: 3rem;
+    }
+    .empty-screen .icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
+    .empty-screen p { font-size: 1rem; }
+
+    @media (max-width: 768px) {
+      .lms-wrap { flex-direction: column; height: auto; }
+      .lms-sidebar { width: 100%; min-width: unset; max-height: 280px; border-right: none; border-bottom: 1px solid #334155; }
+      .lesson-info-panel { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav style="background:#1E293B;border-bottom:1px solid #334155">
+  <a href="/" class="nav-logo" style="color:#A5B4FC"><span class="icon">🎓</span> LearnHub</a>
+  <div style="display:flex;align-items:center;gap:0.5rem" id="courseNameNav"></div>
+  <div class="nav-right">
+    <button class="theme-btn" onclick="toggleTheme()" style="background:#334155;border-color:#475569;color:#94A3B8">🌙</button>
+    <a href="/dashboard.html" class="btn btn-ghost btn-sm" style="background:#334155;color:#94A3B8;border-color:#475569">← Dashboard</a>
+    <div class="nav-avatar" id="navAvatar" style="background:#6366F1">?</div>
+    <button onclick="logout()" class="btn btn-ghost btn-sm" style="background:#334155;color:#94A3B8;border-color:#475569">Logout</button>
+  </div>
+</nav>
+
+<div class="lms-wrap">
+  <!-- SIDEBAR -->
+  <div class="lms-sidebar">
+    <div class="lms-sidebar-head">
+      <h4 id="sidebarTitle">Loading...</h4>
+      <div class="prog-row">
+        <span id="progText">0% complete</span>
+        <span id="progCount">0/0</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    <div class="lms-lesson-list" id="lessonList">
+      <div style="padding:1.5rem;text-align:center;color:#475569;font-size:0.85rem">Loading lessons...</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="lms-main" id="lmsMain">
+    <div class="empty-screen">
+      <div class="icon">▶️</div>
+      <p>Select a lesson from the sidebar to start watching</p>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+  if (!isLoggedIn()) { window.location.href = '/login.html?redirect=' + encodeURIComponent(location.href); }
+
+  const user = getUser();
+  if (user) document.getElementById('navAvatar').textContent = user.name[0].toUpperCase();
+
+  const courseId = new URLSearchParams(location.search).get('course');
+  if (!courseId) window.location.href = '/courses.html';
+
+  let lessons = [];
+  let currentLesson = null;
+  let progressTimer = null;
+  let simPct = 0;
+
+  // ── INIT ──
+  async function init() {
+    try {
+      // Load course info + lessons with progress in parallel
+      const [course, lessonData] = await Promise.all([
+        apiFetch('/api/course/' + courseId),
+        apiFetch('/api/course/' + courseId + '/lessons-with-progress').catch(() => null)
+      ]);
+
+      document.title = course.title + ' - LearnHub';
+      document.getElementById('sidebarTitle').textContent = course.title;
+      document.getElementById('courseNameNav').innerHTML =
+        `<span style="font-size:0.82rem;color:#64748B;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${course.title}</span>`;
+
+      // Use lessons-with-progress if available, else fall back to plain lessons
+      if (lessonData && lessonData.length > 0) {
+        lessons = lessonData;
+      } else {
+        // Not enrolled or no progress yet — use plain lessons with video_url
+        lessons = (course.lessons || []).map(l => ({
+          id: l.id,
+          course_id: l.course_id,
+          title: l.title,
+          video_url: l.video_url || '',
+          lesson_order: l.lesson_order,
+          completed: false,
+          watch_percent: 0
+        }));
+      }
+
+      updateProgressBar();
+      renderSidebar();
+
+      // Auto-open best lesson
+      const inProgress = lessons.find(l => l.watch_percent > 0 && !l.completed);
+      const firstIncomplete = lessons.find(l => !l.completed);
+      const toOpen = inProgress || firstIncomplete || lessons[0];
+      if (toOpen) openLesson(toOpen);
+
+    } catch (err) {
+      console.error('Init error:', err);
+      document.getElementById('lessonList').innerHTML =
+        '<div style="padding:1.5rem;text-align:center;color:#EF4444;font-size:0.85rem">Failed to load lessons.<br/>Make sure you are enrolled.</div>';
+    }
+  }
+
+  // ── PROGRESS BAR ──
+  function updateProgressBar() {
+    const total = lessons.length;
+    const done = lessons.filter(l => l.completed).length;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    document.getElementById('progFill').style.width = pct + '%';
+    document.getElementById('progText').textContent = pct + '% complete';
+    document.getElementById('progCount').textContent = done + '/' + total;
+  }
+
+  // ── RENDER SIDEBAR ──
+  function renderSidebar() {
+    const list = document.getElementById('lessonList');
+    if (!lessons.length) {
+      list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#475569;font-size:0.85rem">No lessons found.</div>';
+      return;
+    }
+    list.innerHTML = lessons.map((l, i) => {
+      const done = l.completed;
+      const locked = i > 0 && !lessons[i - 1].completed;
+      const active = currentLesson && currentLesson.id === l.id;
+      const pct = Math.round(l.watch_percent || 0);
+      let meta = '🎬 Video lesson';
+      if (locked) meta = '🔒 Complete previous lesson';
+      else if (done) meta = '✅ Completed';
+      else if (pct > 0) meta = `▶ ${pct}% watched`;
+      return `
+        <div class="lesson-row ${done ? 'done' : ''} ${locked ? 'locked' : ''} ${active ? 'active' : ''}"
+             id="lr-${l.id}" onclick="${locked ? 'showLocked()' : `openLesson(lessons[${i}])`}">
+          <div class="lesson-num-badge">${done ? '✓' : locked ? '🔒' : l.lesson_order}</div>
+          <div class="lesson-row-info">
+            <div class="lesson-row-title">${l.title}</div>
+            <div class="lesson-row-meta">${meta}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── OPEN LESSON ──
+  function openLesson(lesson) {
+    clearInterval(progressTimer);
+    currentLesson = lesson;
+    simPct = lesson.watch_percent || 0;
+
+    const done = lesson.completed;
+    const pct = Math.round(lesson.watch_percent || 0);
+    const idx = lessons.findIndex(l => l.id === lesson.id);
+    const nextLesson = (done && idx < lessons.length - 1) ? lessons[idx + 1] : null;
+    const locked = idx > 0 && !lessons[idx - 1].completed;
+
+    // Build embed URL
+    let embedUrl = '';
+    if (lesson.video_url) {
+      let url = lesson.video_url.trim();
+      let videoId = '';
+      if (url.includes('watch?v=')) {
+        videoId = url.split('watch?v=')[1].split('&')[0].split('#')[0];
+      } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0].split('#')[0];
+      } else if (url.includes('/embed/')) {
+        videoId = url.split('/embed/')[1].split('?')[0].split('#')[0];
+      } else if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+        videoId = url; // raw video ID
+      }
+      if (videoId) {
+        embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=0`;
+      }
+    }
+
+    const main = document.getElementById('lmsMain');
+    main.innerHTML = `
+      <div class="video-container">
+        ${embedUrl
+          ? `<iframe src="${embedUrl}" allowfullscreen
+               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+               title="${lesson.title}"></iframe>`
+          : `<div class="video-placeholder">
+               <div class="play-icon">🎬</div>
+               <p style="font-size:0.9rem">No video available for this lesson</p>
+             </div>`
+        }
+      </div>
+
+      <div id="alertBar" class="alert-bar"></div>
+
+      <div class="lesson-info-panel">
+        <div class="lesson-badges">
+          <span class="lbadge lbadge-num">Lesson ${lesson.lesson_order}</span>
+          ${done ? '<span class="lbadge lbadge-done">✅ Completed</span>' : ''}
+          ${pct > 0 && !done ? `<span class="lbadge lbadge-pct">${pct}% watched</span>` : ''}
+          ${locked ? '<span class="lbadge lbadge-locked">🔒 Locked</span>' : ''}
+        </div>
+        <div class="lesson-title">${lesson.title}</div>
+        <div class="lesson-course-name" id="lessonCourseName">Loading course name...</div>
+
+        ${!done ? `
+          <div class="watch-progress-bar">
+            <div class="watch-progress-fill" id="watchFill" style="width:${pct}%"></div>
+          </div>
+          <div class="watch-progress-label" id="watchLabel">
+            ${pct > 0 ? `${pct}% watched — keep going!` : 'Start watching to track progress'}
+          </div>` : ''}
+
+        <div class="action-row">
+          ${locked
+            ? `<span style="color:#64748B;font-size:0.88rem">🔒 Complete the previous lesson to unlock this one</span>`
+            : done
+              ? `<span class="done-msg">✅ Lesson completed</span>`
+              : `<button class="btn-complete" id="completeBtn" onclick="markComplete(${lesson.id})">
+                   ✓ Mark as Complete
+                 </button>`
+          }
+          ${nextLesson && !locked
+            ? `<button class="btn-next" onclick="openLesson(lessons[${idx + 1}])">
+                 Next: ${nextLesson.title.substring(0, 30)}${nextLesson.title.length > 30 ? '...' : ''} →
+               </button>`
+            : ''
+          }
+        </div>
+      </div>`;
+
+    // Set course name
+    apiFetch('/api/course/' + courseId).then(c => {
+      const el = document.getElementById('lessonCourseName');
+      if (el) el.textContent = '📚 ' + c.title;
+    }).catch(() => {});
+
+    // Scroll sidebar item into view
+    renderSidebar();
+    setTimeout(() => {
+      const el = document.getElementById('lr-' + lesson.id);
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 100);
+
+    // Start progress simulation if not done and not locked
+    if (!done && !locked && embedUrl) {
+      startProgressTracking(lesson);
+    }
+  }
+
+  // ── PROGRESS TRACKING ──
+  function startProgressTracking(lesson) {
+    clearInterval(progressTimer);
+    let localPct = lesson.watch_percent || 0;
+
+    progressTimer = setInterval(async () => {
+      localPct = Math.min(localPct + 8, 100); // +8% every 10s
+
+      // Update UI
+      const fill = document.getElementById('watchFill');
+      const label = document.getElementById('watchLabel');
+      if (fill) fill.style.width = localPct + '%';
+      if (label) label.textContent = `${Math.round(localPct)}% watched — keep going!`;
+
+      // Save to backend
+      try {
+        const res = await apiFetch('/api/progress', {
+          method: 'POST',
+          body: JSON.stringify({ lesson_id: lesson.id, watch_percent: localPct })
+        });
+
+        // Update local lesson data
+        const idx = lessons.findIndex(l => l.id === lesson.id);
+        if (idx !== -1) {
+          lessons[idx].watch_percent = localPct;
+          if (res.completed) {
+            lessons[idx].completed = true;
+            clearInterval(progressTimer);
+            updateProgressBar();
+            openLesson(lessons[idx]); // re-render with completed state
+            showAlert('✅ Lesson auto-completed!', 'success');
+          }
+        }
+      } catch (e) {
+        // Silently fail progress saves
+      }
+
+      if (localPct >= 100) clearInterval(progressTimer);
+    }, 10000); // every 10 seconds
+  }
+
+  // ── MARK COMPLETE ──
+  async function markComplete(lessonId) {
+    const btn = document.getElementById('completeBtn');
+    if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+    try {
+      await apiFetch('/api/lesson/complete', {
+        method: 'POST',
+        body: JSON.stringify({ lesson_id: lessonId })
+      });
+      clearInterval(progressTimer);
+      const idx = lessons.findIndex(l => l.id === lessonId);
+      if (idx !== -1) {
+        lessons[idx].completed = true;
+        lessons[idx].watch_percent = 100;
+      }
+      updateProgressBar();
+      openLesson(lessons[idx]);
+      showAlert('✅ Lesson marked as complete!', 'success');
+    } catch (err) {
+      showAlert('⚠️ ' + (err.error || 'Could not mark complete'), 'error');
+      if (btn) { btn.textContent = '✓ Mark as Complete'; btn.disabled = false; }
+    }
+  }
+
+  function showLocked() {
+    showAlert('🔒 Complete the previous lesson first to unlock this one', 'error');
+  }
+
+  function showAlert(msg, type) {
+    const bar = document.getElementById('alertBar');
+    if (!bar) return;
+    bar.textContent = msg;
+    bar.className = 'alert-bar show ' + type;
+    setTimeout(() => { bar.className = 'alert-bar'; }, 4000);
+  }
+
+  init();
+</script>
+</body>
+</html>

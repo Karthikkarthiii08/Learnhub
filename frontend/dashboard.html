@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - LearnHub</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo"><span class="icon">🎓</span> LearnHub</a>
+  <div class="nav-center">
+    <a href="/">Home</a>
+    <a href="/courses.html">Courses</a>
+  </div>
+  <div class="nav-right">
+    <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+    <div class="nav-user">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <span style="font-size:0.88rem;color:var(--text2);font-weight:500" id="navName"></span>
+    </div>
+    <button onclick="logout()" class="btn btn-ghost btn-sm">Logout</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Student</div>
+    <a href="/dashboard.html" class="active">🏠 Dashboard</a>
+    <a href="/courses.html">📚 Browse Courses</a>
+    <a href="/courses.html?premium=1">⭐ Premium</a>
+    <div class="sidebar-label">Account</div>
+    <a href="#" onclick="logout()">🚪 Logout</a>
+  </div>
+  <div class="main-content">
+    <div id="alertBox"></div>
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div id="continueWrap" style="display:none;margin-bottom:2rem">
+      <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">Continue Learning</h3>
+      <div id="continueCards"></div>
+    </div>
+
+    <div class="page-header">
+      <h2>My Enrolled Courses</h2>
+      <p>Pick up where you left off</p>
+    </div>
+    <div class="course-grid" id="myCourses" style="margin-bottom:3rem"></div>
+
+    <div class="page-header">
+      <h2>Discover More Courses</h2>
+    </div>
+    <div class="course-grid" id="allCourses"></div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+  if (!isLoggedIn()) window.location.href = '/login.html';
+  if (isAdmin()) window.location.href = '/admin.html';
+  const user = getUser();
+  document.getElementById('navName').textContent = user.name;
+  document.getElementById('navAvatar').textContent = user.name[0].toUpperCase();
+
+  async function load() {
+    const [mine, all] = await Promise.all([apiFetch('/api/my-courses'), apiFetch('/api/courses')]);
+    const totalLessons = mine.reduce((s, c) => s + c.lesson_count, 0);
+    const doneLessons = mine.reduce((s, c) => s + (c.completed || 0), 0);
+
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><div class="stat-icon purple">📚</div><div><div class="stat-num">${mine.length}</div><div class="stat-label">Enrolled</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-num">${doneLessons}</div><div class="stat-label">Lessons Done</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue">🎯</div><div><div class="stat-num">${totalLessons - doneLessons}</div><div class="stat-label">Remaining</div></div></div>
+    `;
+
+    // Continue learning
+    const inProgress = mine.filter(c => c.percent > 0 && c.percent < 100);
+    if (inProgress.length) {
+      document.getElementById('continueWrap').style.display = 'block';
+      document.getElementById('continueCards').innerHTML = inProgress.slice(0,2).map(c => `
+        <div class="continue-card" onclick="location.href='/lesson.html?course=${c.id}'" style="cursor:pointer">
+          <img src="${c.thumbnail || `https://placehold.co/160x120/ffffff/4F46E5?text=Course`}" alt="${c.title}"/>
+          <div style="flex:1;min-width:0">
+            <h4>${c.title}</h4>
+            <p>👤 ${c.instructor || 'Admin'} · ${c.lesson_count} lessons</p>
+            <div class="continue-bar"><div class="continue-bar-fill" style="width:${c.percent}%"></div></div>
+            <span style="font-size:0.78rem;opacity:0.9">${c.percent}% complete</span>
+          </div>
+          <a href="/lesson.html?course=${c.id}" class="btn btn-white btn-sm" onclick="event.stopPropagation()">▶ Resume</a>
+        </div>`).join('');
+    }
+
+    // My courses
+    const myEl = document.getElementById('myCourses');
+    myEl.innerHTML = mine.length
+      ? mine.map(c => courseCardHtml(c, true)).join('')
+      : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎓</div><p>No enrollments yet. Browse courses below!</p></div>';
+
+    // Discover
+    const enrolledIds = new Set(mine.map(c => c.id));
+    const rest = all.filter(c => !enrolledIds.has(c.id));
+    document.getElementById('allCourses').innerHTML = rest.length
+      ? rest.map(c => courseCardHtml(c)).join('')
+      : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏆</div><p>You\'re enrolled in all courses!</p></div>';
+  }
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LearnHub - Unlock Your Potential</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><span class="icon">🎓</span> LearnHub</a>
+  <div class="nav-center">
+    <a href="/" class="active">Home</a>
+    <a href="/about.html">About</a>
+    <a href="/courses.html">Courses</a>
+    <a href="/courses.html?premium=1">Premium Courses</a>
+  </div>
+  <div class="nav-right" id="navRight">
+    <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <a href="/login.html" class="btn btn-white btn-sm">Login</a>
+    <a href="/signup.html" class="btn btn-primary btn-sm">Sign Up</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-card">
+    <h1>Unlock Your Potential with LearnHub</h1>
+    <p>Join 100,000+ learners mastering new skills with expert-led courses</p>
+    <div class="hero-btns">
+      <a href="/courses.html" class="btn btn-primary btn-lg">Free Courses</a>
+      <a href="/courses.html?premium=1" class="btn btn-outline btn-lg">Premium Courses</a>
+    </div>
+  </div>
+</section>
+
+<!-- CONTINUE LEARNING (logged in) -->
+<div class="container" id="continueSection" style="display:none;padding-bottom:0">
+  <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:1rem">Continue Learning</h2>
+  <div id="continueCards"></div>
+</div>
+
+<!-- WHY -->
+<div class="container" style="padding-bottom:0">
+  <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.3rem">Why Choose LearnHub?</h2>
+  <p style="color:var(--muted);margin-bottom:1.5rem">Everything you need to grow your skills</p>
+  <div class="why-grid">
+    <div class="why-card"><div class="why-icon">🎬</div><h4>Video Learning</h4><p>Watch expert-led video lessons at your own pace, anytime.</p></div>
+    <div class="why-card"><div class="why-icon">📈</div><h4>Track Progress</h4><p>Visual progress bars keep you motivated and on track.</p></div>
+    <div class="why-card"><div class="why-icon">🔒</div><h4>Structured Path</h4><p>Lessons unlock in order so you build solid foundations.</p></div>
+    <div class="why-card"><div class="why-icon">🏆</div><h4>Expert Instructors</h4><p>Learn from industry professionals with real-world experience.</p></div>
+  </div>
+</div>
+
+<!-- FEATURED COURSES -->
+<div class="container">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <div>
+      <h2 style="font-size:1.5rem;font-weight:800">Featured Courses</h2>
+      <p style="color:var(--muted);font-size:0.88rem">Handpicked courses to get you started</p>
+    </div>
+    <a href="/courses.html" class="btn btn-ghost btn-sm">View All →</a>
+  </div>
+  <div class="course-grid" id="featuredGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">Loading courses...</div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">🎓 LearnHub</div>
+  <p>© 2025 LearnHub. Empowering learners worldwide.</p>
+</footer>
+
+<script src="/static/js/api.js"></script>
+<script>
+  // Update nav if logged in
+  const user = getUser();
+  if (user) {
+    document.getElementById('navRight').innerHTML = `
+      <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+      <div class="nav-user">
+        <div class="nav-avatar">${user.name[0].toUpperCase()}</div>
+        <span style="font-size:0.88rem;color:var(--text2);font-weight:500">${user.name}</span>
+      </div>
+      <a href="${user.role === 'admin' ? '/admin.html' : '/dashboard.html'}" class="btn btn-primary btn-sm">Dashboard</a>
+    `;
+  }
+
+  // Continue learning
+  if (isLoggedIn() && !isAdmin()) {
+    apiFetch('/api/my-courses').then(courses => {
+      const inProgress = courses.filter(c => c.percent > 0 && c.percent < 100);
+      if (!inProgress.length) return;
+      document.getElementById('continueSection').style.display = 'block';
+      document.getElementById('continueCards').innerHTML = inProgress.slice(0, 2).map(c => `
+        <div class="continue-card" onclick="location.href='/lesson.html?course=${c.id}'" style="cursor:pointer">
+          <img src="${c.thumbnail || `https://placehold.co/160x120/ffffff/4F46E5?text=Course`}" alt="${c.title}"/>
+          <div style="flex:1;min-width:0">
+            <h4>${c.title}</h4>
+            <p>👤 ${c.instructor || 'Admin'} · ${c.lesson_count} lessons</p>
+            <div class="continue-bar"><div class="continue-bar-fill" style="width:${c.percent}%"></div></div>
+            <span style="font-size:0.78rem;opacity:0.9">${c.percent}% complete</span>
+          </div>
+          <a href="/lesson.html?course=${c.id}" class="btn btn-white btn-sm" onclick="event.stopPropagation()">▶ Resume</a>
+        </div>`).join('');
+    }).catch(() => {});
+  }
+
+  // Featured courses
+  apiFetch('/api/courses').then(courses => {
+    const grid = document.getElementById('featuredGrid');
+    if (!courses.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📚</div><p>No courses yet.</p></div>';
+      return;
+    }
+    grid.innerHTML = courses.slice(0, 8).map(c => courseCardHtml(c)).join('');
+  }).catch(() => {
+    document.getElementById('featuredGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:2rem">Could not load courses.</div>';
+  });
+</script>
+</body>
+</html>

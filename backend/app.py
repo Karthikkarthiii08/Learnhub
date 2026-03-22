@@ -29,6 +29,10 @@ JWTManager(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(courses_bp)
 
+# Auto-create tables (needed for Postgres on first deploy)
+with app.app_context():
+    db.create_all()
+
 # Serve frontend pages
 @app.route('/')
 def index():
